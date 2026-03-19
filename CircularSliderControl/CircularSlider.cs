@@ -304,67 +304,66 @@ namespace CircularSliderControl
             // 定义有效角度范围（未旋转时）
             double start = StartAngle;
             double end = EndAngle;
+
             // 确保范围连续（end在start之后）
             if (end < start) end += 360;
             double sweep = end - start;
             if (sweep <= 0) sweep = 360; // 完整圆
 
-            // 将rawAngle钳位到 [start, start+sweep] 范围内（考虑角度循环）
-            double clampedAngle;
-            if (sweep >= 360)
-            {
-                // 完整圆，直接使用rawAngle（已在0-360内）
-                clampedAngle = rawAngle;
-            }
-            else
-            {
-                // 将rawAngle映射到连续区间内进行比较
-                double lower = start;
-                double upper = start + sweep;
-
-                // 尝试将rawAngle调整到[lower, upper]区间
-                if (rawAngle < lower)
-                {
-                    // 可能通过加360进入区间
-                    if (rawAngle + 360 <= upper)
-                        clampedAngle = rawAngle + 360;
-                    else
-                        clampedAngle = lower; // 仍小于lower，停在最小值
-                }
-                else if (rawAngle > upper)
-                {
-                    // 可能通过减360进入区间
-                    if (rawAngle - 360 >= lower)
-                        clampedAngle = rawAngle - 360;
-                    else
-                        clampedAngle = upper; // 仍大于upper，停在最大值
-                }
-                else
-                {
-                    clampedAngle = rawAngle;
-                }
-            }
-
-            // 将角度归一化到0-360，方便后续计算
-            clampedAngle = clampedAngle % 360;
-            if (clampedAngle < 0) clampedAngle += 360;
-
-            // 计算归一化值（相对于start）
+            // 计算归一化值
             double normalized;
+
             if (sweep >= 360)
             {
                 // 完整圆：角度直接映射到值
-                normalized = clampedAngle / 360.0;
+                normalized = rawAngle / 360.0;
             }
             else
             {
-                // 处理角度可能跨越0度的情况
-                double angleInRange = clampedAngle;
-                if (angleInRange < start) angleInRange += 360;
-                normalized = (angleInRange - start) / sweep;
+                // 处理非完整圆的情况
+                // 将rawAngle调整到[start, end]范围内进行比较
+                double adjustedAngle = rawAngle;
+
+                // 判断鼠标是否在有效范围内
+                bool isInRange;
+
+                if (start <= 360 && end <= 360)
+                {
+                    // 正常范围（不跨0度）
+                    isInRange = adjustedAngle >= start && adjustedAngle <= end;
+                }
+                else
+                {
+                    // 跨0度范围（如 350° 到 30°）
+                    double startMod = start % 360;
+                    double endMod = end % 360;
+
+                    if (adjustedAngle >= startMod || adjustedAngle <= endMod)
+                    {
+                        isInRange = true;
+                        // 调整角度以便计算归一化值
+                        if (adjustedAngle < startMod)
+                            adjustedAngle += 360;
+                    }
+                    else
+                    {
+                        isInRange = false;
+                    }
+                }
+
+                if (isInRange)
+                {
+                    // 鼠标在有效范围内，计算归一化值
+                    normalized = (adjustedAngle - start) / sweep;
+                }
+                else
+                {
+                    // 鼠标超出有效范围，保持当前值不变
+                    return;
+                }
             }
 
-            // 确保normalized在[0,1]内（由于钳位，应该已经满足）
+            // 确保normalized在[0,1]内
             normalized = Math.Max(0, Math.Min(1, normalized));
 
             // 计算新值
